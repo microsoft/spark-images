@@ -29,7 +29,7 @@ object ImageSchema{
     StructField("width",  IntegerType, false) ::
     StructField("nChannels",  IntegerType, false) ::
     StructField("mode", StringType, false) ::        //OpenCV-compatible type: CV_8U in most cases
-    StructField("data",  BinaryType, false) :: Nil)   //bytes in OpenCV-compatible order: row-wise BGR in most cases
+    StructField("data",  BinaryType, true) :: Nil)   //bytes in OpenCV-compatible order: row-wise BGR in most cases
 
   //dataframe with a single column of images named "image" (nullable)
   private val imageDFSchema = StructType(StructField("image", columnSchema, true) :: Nil)
@@ -57,12 +57,13 @@ object ImageSchema{
     * @param bytes image bytes (for example, jpeg)
     * @return returns None if decompression fails
     */
-  private[spark] def decode(origin: String, bytes: Array[Byte]): Option[Row] = {
+  private[spark] def decode(origin: String, bytes: Array[Byte]): Row = {
 
     val img = ImageIO.read(new ByteArrayInputStream(bytes))
 
     if (img == null) {
-      None
+      //non-image files: keep origin, nullify data, put other values as default
+      Row(origin, 0, 0, 0, "CV_8U", null)
     } else {
 
       val height = img.getHeight
@@ -87,7 +88,7 @@ object ImageSchema{
         }
       }
 
-      Some(Row(Row(origin, height, width, nChannels, mode, decoded)))
+      Row(origin, height, width, nChannels, mode, decoded)
     }
   }
 
@@ -118,8 +119,8 @@ object ImageSchema{
     try {
       val streams = session.sparkContext.binaryFiles(path, partitions)
 
-      val images = streams.flatMap { row: (String, PortableDataStream) =>
-        decode(row._1, row._2.toArray)
+      val images = streams.map { row: (String, PortableDataStream) =>
+        Row(decode(row._1, row._2.toArray))
       }
 
       result = session.createDataFrame(images, imageDFSchema)

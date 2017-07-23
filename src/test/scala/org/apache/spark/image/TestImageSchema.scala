@@ -7,6 +7,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Row, DataFrame, SQLContext, SparkSession}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.image.ImageSchema._
+import java.nio.file.Paths
 
 class TestImageSchemaSuite extends FunSuite with TestSparkContext {
 
@@ -41,16 +42,17 @@ class TestImageSchemaSuite extends FunSuite with TestSparkContext {
     assert(df.count == 0)
 
     df = readImages(imagePath, recursive = true)
+    assert(df.count == 104)
+    df = df.na.drop(Seq("image.data"))    //dropping non-image files
     val count100 = df.count
     assert(count100 == 103)
 
-    df = readImages(imagePath, recursive = true, sampleRatio = 0.5)
+    df = readImages(imagePath, recursive = true, sampleRatio = 0.5).na.drop(Seq("image.data"))
     val count50 = df.count //random number about half of the size of the original dataset
     assert(count50 > 0.2 * count100 && count50 < 0.8 * count100)
   }
 
   //images with the different number of channels
-  import java.nio.file.Paths
   test("readImages pixel values test") {
 
     val images = readImages(imagePath + "/multi-channel/", recursive = false).collect
