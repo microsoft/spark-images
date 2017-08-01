@@ -19,7 +19,9 @@ trait TestSparkContext extends BeforeAndAfterAll { self: FunSuite =>
       .set("spark.ui.port", "4079")
       .set("spark.sql.shuffle.partitions", "4")  // makes small tests much faster
 
-    SparkSession.builder().config(conf).getOrCreate()
+    val sess = SparkSession.builder().config(conf).getOrCreate()
+    sess.sparkContext.setLogLevel("WARN")
+    sess
   }
 
   override def beforeAll() {
