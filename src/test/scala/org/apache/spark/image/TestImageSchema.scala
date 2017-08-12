@@ -34,22 +34,29 @@ class TestImageSchemaSuite extends FunSuite with TestSparkContext {
     val df = spark.createDataFrame(rdd, imageDFSchema)
 
     assert(df.count == 2, "incorrect image count")
-    assert(ImageSchema.isImage(df, "image"), "data do not fit ImageSchema")
+    assert(ImageSchema.isImageColumn(df, "image"), "data do not fit ImageSchema")
   }
 
   test("readImages count test") {
     var df = readImages(imagePath, recursive = false)
     assert(df.count == 0)
 
-    df = readImages(imagePath, recursive = true)
+    df = readImages(imagePath, recursive = true, dropImageFailures = false)
     assert(df.count == 104)
-    df = df.na.drop(Seq("image.data"))    //dropping non-image files
+
+    df = readImages(imagePath, recursive = true, dropImageFailures = true)
     val count100 = df.count
     assert(count100 == 103)
 
-    df = readImages(imagePath, recursive = true, sampleRatio = 0.5).na.drop(Seq("image.data"))
-    val count50 = df.count //random number about half of the size of the original dataset
+    df = readImages(imagePath, recursive = true, sampleRatio = 0.5, dropImageFailures = true)
+    val count50 = df.count              //random number about half of the size of the original dataset
     assert(count50 > 0.2 * count100 && count50 < 0.8 * count100)
+  }
+
+  // TODO: fix the partition test
+  ignore("readImages partition test") {
+    val df = readImages(imagePath, recursive = true, dropImageFailures = true, numPartitions = 3)
+    assert(df.rdd.getNumPartitions == 3)
   }
 
   //images with the different number of channels
