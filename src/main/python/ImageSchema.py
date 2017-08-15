@@ -1,14 +1,17 @@
-# Copyright (C) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See LICENSE in project root for information.
-
 import pyspark
+from pyspark import SparkContext
 from pyspark.sql.types import *
 from pyspark.sql.types import Row, _create_row
+from pyspark.sql import DataFrame
+from pyspark.ml.param.shared import *
 import numpy as np
+
+undefinedImageType = "Undefined"
 
 ImageFields = ["origin", "height", "width", "nChannels", "mode", "data"]
 
 ocvTypes = {
+    undefinedImageType : -1,
     "CV_8U" : 0, "CV_8UC1" : 0, "CV_8UC2" : 8, "CV_8UC3" : 16, "CV_8UC4" : 24,
     "CV_8S" : 1, "CV_8SC1" : 1, "CV_8SC2" : 9, "CV_8SC3" : 17, "CV_8SC4" : 25,
     "CV_16U": 2, "CV_16UC1": 2, "CV_16UC2":10, "CV_16UC3": 18, "CV_16UC4": 26,
@@ -62,3 +65,30 @@ def toImage(array, origin = "", mode = "CV_8UC3"):
     # Creating new Row with _create_row(), because Row(name = value, ... ) orders fields by name,
     # which conflicts with expected ImageSchema order when the new DataFrame is created by UDF
     return  _create_row(ImageFields, [origin, height, width, nChannels, mode, data])
+
+def readImages(path,
+               sparkSession = None,         #TODO: do we need this parameter in Python signature?
+               recursive = False,
+               numPartitions = 0,
+               dropImageFailures = False,
+               sampleRatio = 1.0):
+    """
+    Reads the directory of images from the local or remote (WASB) source.
+    Example: spark.readImages(path, recursive = True)
+    Args:
+        path (str): Path to the image directory
+        sparkSession (SparkSession): Existing sparkSession
+        recursive (bool): Recursive search flag
+        numPartitions (int): Number of the dataframe partitions
+        dropImageFailures (bool): Drop the files that are not valid images from the result
+        sampleRatio (double): Fraction of the images loaded
+    Returns:
+        DataFrame: DataFrame with a single column of "images", see imageSchema
+        for details
+    """
+    ctx = SparkContext.getOrCreate()
+    imageSchema = ctx._jvm.org.apache.spark.image.ImageSchema
+    sql_ctx = pyspark.SQLContext.getOrCreate(ctx)
+    jsession = sql_ctx.sparkSession._jsparkSession
+    jresult = imageSchema.readImages(path, jsession, recursive, numPartitions, dropImageFailures, float(sampleRatio))
+    return DataFrame(jresult, sql_ctx)
