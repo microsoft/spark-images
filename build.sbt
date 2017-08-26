@@ -21,7 +21,6 @@ val sparkComponents = Seq("sql")
 
 libraryDependencies ++= Seq(
   // "%%" for scala things, "%" for plain java things
-  "com.typesafe" % "config" % "1.3.1",
   "org.apache.logging.log4j" %  "log4j-api"       % "2.8.1" % "provided",
   "org.apache.logging.log4j" %  "log4j-core"      % "2.8.1" % "provided",
   "org.apache.logging.log4j" %% "log4j-api-scala" % "2.8.1" % "provided",
@@ -29,8 +28,6 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-mllib" % sparkVer % "provided",
   "org.scalatest"    %% "scalatest"   % "3.0.0"  % "provided"
 )
-
-assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
 parallelExecution := false
 
