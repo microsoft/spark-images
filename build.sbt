@@ -30,6 +30,8 @@ libraryDependencies ++= Seq(
   "org.scalatest"    %% "scalatest"   % "3.0.0"  % "provided"
 )
 
+assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
+
 parallelExecution := false
 
 // This fixes a class loader problem with scala.Tuple2 class, scala-2.11, Spark 2.x
