@@ -1,8 +1,4 @@
 language: scala
 scala:
   - 2.11.8
-dist: xenial
-script:
-  - ./build/sbt test
-  - ./build/sbt package
-  
+dist: xenial  
