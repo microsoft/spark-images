@@ -53,8 +53,7 @@ class TestImageSchemaSuite extends FunSuite with TestSparkContext {
     assert(count50 > 0.2 * count100 && count50 < 0.8 * count100)
   }
 
-  // TODO: fix the partition test
-  ignore("readImages partition test") {
+  test("readImages partition test") {
     val df = readImages(imagePath, recursive = true, dropImageFailures = true, numPartitions = 3)
     assert(df.rdd.getNumPartitions == 3)
   }
@@ -88,12 +87,11 @@ class TestImageSchemaSuite extends FunSuite with TestSparkContext {
     }
   }
 
-  // TODO: fix grayscale test
   // number of channels and first 20 bytes of OpenCV representation
   // - default representation for 3-channel RGB images is BGR row-wise:  (B00, G00, R00,      B10, G10, R10,      ...)
   // - default representation for 4-channel RGB images is BGRA row-wise: (B00, G00, R00, A00, B10, G10, R10, A00, ...)
   private val firstBytes20 = Map(
-    //"grayscale.png" -> (("CV_8UC1", Array[Byte](0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 3, 5, 2, 1))),
+    "grayscale.png" -> (("CV_8UC1", Array[Byte](0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 3, 5, 2, 1))),
     "RGB.png" -> (("CV_8UC3", Array[Byte](-34, -66, -98, -38, -69, -98, -62, -90, -117, -70, -98, -124, -34, -63, -90, -20, -48, -74, -18, -45))),
     "RGBA.png" -> (("CV_8UC4", Array[Byte](-128, -128, -8, -1, -128, -128, -8, -1, -128, -128, -8, -1, 127, 127, -9, -1, 127, 127, -9, -1)))
   )

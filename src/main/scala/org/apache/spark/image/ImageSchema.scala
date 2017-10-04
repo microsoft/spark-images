@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage
 import java.awt.{Color, Image}
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import java.awt.color.ColorSpace
 
 object ImageSchema{
 
@@ -74,27 +75,45 @@ object ImageSchema{
       None
     } else {
 
+      val is_gray = img.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+      val has_alpha = img.getColorModel.hasAlpha
+
       val height = img.getHeight
       val width = img.getWidth
-      val (nChannels, mode) = if(img.getColorModel().hasAlpha()) (4, "CV_8UC4") else (3, "CV_8UC3") //TODO: grayscale
+      val (nChannels, mode) = if(is_gray)        (1, "CV_8UC1")
+                              else if(has_alpha) (4, "CV_8UC4")
+                              else               (3, "CV_8UC3")
 
       assert(height*width*nChannels < 1e9, "image is too large")
       val decoded = Array.ofDim[Byte](height*width*nChannels)
 
-      var offset = 0
-      for(h <- 0 until height) {
-        for (w <- 0 until width) {
-          val color = new Color(img.getRGB(w, h))
-
-          decoded(offset) = color.getBlue.toByte
-          decoded(offset+1) = color.getGreen.toByte
-          decoded(offset+2) = color.getRed.toByte
-          if(nChannels == 4){
-            decoded(offset+3) = color.getAlpha.toByte
+      // grayscale images in Java require special handling to get the correct intensity
+      if(is_gray){
+        var offset = 0
+        val raster = img.getRaster
+        for(h <- 0 until height) {
+          for (w <- 0 until width) {
+            decoded(offset) = raster.getSample(w, h, 0).toByte
+            offset += 1
           }
-          offset += nChannels
         }
       }
+      else{
+        var offset = 0
+        for (h <- 0 until height) {
+            for (w <- 0 until width) {
+              val color = new Color(img.getRGB(w, h))
+
+              decoded(offset) = color.getBlue.toByte
+              decoded(offset + 1) = color.getGreen.toByte
+              decoded(offset + 2) = color.getRed.toByte
+              if (nChannels == 4) {
+                decoded(offset + 3) = color.getAlpha.toByte
+              }
+              offset += nChannels
+            }
+          }
+        }
 
       // the internal "Row" is needed, because the image is a single dataframe column
       Some(Row(Row(origin, height, width, nChannels, mode, decoded)))
@@ -132,6 +151,7 @@ object ImageSchema{
     var result: DataFrame = null
     try {
       val streams = session.sparkContext.binaryFiles(path, partitions)
+                                        .repartition(partitions)
 
       val images = if(dropImageFailures){
         streams.flatMap{
